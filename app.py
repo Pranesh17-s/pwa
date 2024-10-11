@@ -1,15 +1,15 @@
+import os
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from deep_translator import GoogleTranslator
 from langdetect import detect
 import torch
-import os
 
 app = Flask(__name__)
 CORS(app)
 
-# Load the model and tokenizer
+# Load the model and tokenizer once at startup
 MODEL_NAME = "cardiffnlp/twitter-roberta-base-sentiment"
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
@@ -27,6 +27,15 @@ translator = GoogleTranslator(source='auto', target='en')
 @app.route('/')
 def index():
     return render_template('index.html')
+
+# Serving the service-worker.js from static directory
+@app.route('/static/<path:path>')
+def send_static(path):
+    return send_from_directory('static', path)
+
+@app.route('/manifest.json')
+def serve_manifest():
+    return send_from_directory('.', 'manifest.json')
 
 @app.route('/analyze', methods=['POST'])
 def analyze_sentiment():
@@ -55,14 +64,6 @@ def analyze_sentiment():
         "detected_language": detected_language,
         "predicted_sentiment": emotion
     })
-
-@app.route('/static/<path:path>')
-def send_static(path):
-    return send_from_directory('static', path)
-
-@app.route('/manifest.json')
-def serve_manifest():
-    return send_from_directory('.', 'manifest.json')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 7070))  # Use the PORT environment variable provided by Render
