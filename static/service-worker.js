@@ -32,9 +32,8 @@ self.addEventListener('install', event => {
 self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request).then(response => {
-            return response || fetch(event.request).catch(err => {
-                console.error('Fetch failed:', err); // Log fetch errors
-                // Optionally return a fallback response here
+            return response || fetch(event.request).catch(() => {
+                return caches.match('/index.html'); // Serve index.html when offline
             });
         })
     );
