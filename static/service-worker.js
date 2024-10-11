@@ -8,22 +8,39 @@ const urlsToCache = [
     '/static/icon.png'
 ];
 
+// Install event to cache resources
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME).then(cache => {
-            return cache.addAll(urlsToCache);
+            return Promise.all(
+                urlsToCache.map(url => {
+                    return fetch(url).then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Failed to fetch ${url}: ${response.status}`);
+                        }
+                        return cache.put(url, response); // Cache the response
+                    }).catch(error => {
+                        console.error('Failed to cache:', error); // Log the error for debugging
+                    });
+                })
+            );
         })
     );
 });
 
+// Fetch event to serve cached resources
 self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request).then(response => {
-            return response || fetch(event.request);
+            return response || fetch(event.request).catch(err => {
+                console.error('Fetch failed:', err); // Log fetch errors
+                // Optionally return a fallback response here
+            });
         })
     );
 });
 
+// Activate event to clean up old caches
 self.addEventListener('activate', event => {
     const cacheWhitelist = [CACHE_NAME];
     event.waitUntil(
@@ -31,7 +48,7 @@ self.addEventListener('activate', event => {
             return Promise.all(
                 cacheNames.map(cacheName => {
                     if (!cacheWhitelist.includes(cacheName)) {
-                        return caches.delete(cacheName);
+                        return caches.delete(cacheName); // Delete old caches
                     }
                 })
             );
